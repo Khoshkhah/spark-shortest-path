@@ -167,7 +167,7 @@ def find_lca(cell1: str, cell2: str) -> str:
     cell2_res = h3.get_resolution(cell2)
     lca_res = min(cell1_res, cell2_res)
     
-    while lca_res > 0:
+    while lca_res >= 0:
         if h3.cell_to_parent(cell1, lca_res) == h3.cell_to_parent(cell2, lca_res):
             return h3.cell_to_parent(cell1, lca_res)
         lca_res -= 1
