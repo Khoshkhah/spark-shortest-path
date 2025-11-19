@@ -30,6 +30,23 @@ from utilities import (
 # ============================================================================
 # PURE SPARK SHORTEST PATH COMPUTATION
 # ============================================================================
+def has_converged(current_paths, next_paths):
+    """
+    Check if shortest path computation has converged.
+    Returns: True if NO CHANGES found (converged)
+    """
+    join_keys = ["incoming_edge", "outgoing_edge", "cost", "current_cell"]
+    
+    # Find rows in next_paths that DON'T exist in current_paths
+    # If empty, then next_paths == current_paths (converged!)
+    changes = next_paths.join(
+        current_paths.select(join_keys),
+        on=join_keys,
+        how="left_anti"
+    )
+    
+    # True if NO changes (converged)
+    return changes.limit(1).count() == 0
 
 def update_convergence_status(
     shortcuts_df_last: DataFrame,
@@ -125,9 +142,11 @@ def run_grouped_shortest_path_with_convergence(
         "is_converged", F.lit(False)
     ).cache()
     
-    for iteration in range(max_iterations):
+    #for iteration in range(max_iterations):
+    iteration = 0
+    while(True):
         print(f"\n--- Iteration {iteration} ---")
-        
+        iteration+=1
         # --- PATH EXTENSION ---
         # Find new two-hop paths by joining on connection points
         new_paths = current_paths.alias("L").join(
@@ -189,20 +208,23 @@ def run_grouped_shortest_path_with_convergence(
         
         # --- CONVERGENCE CHECK ---
         # Mark cells as converged if their contents haven't changed
-        next_paths = update_convergence_status(current_paths, next_paths)
+        #next_paths = update_convergence_status(current_paths, next_paths)
         
         # Check if all rows are converged
-        all_converged = next_paths.select(
-            F.max(F.col("is_converged").cast("int")).alias("max_converged")
-        ).collect()[0]["max_converged"] == 1
+        #all_converged = next_paths.select(
+        #    F.max(F.col("is_converged").cast("int")).alias("max_converged")
+        #).collect()[0]["max_converged"] == 1
         
-        if all_converged:
-            print(f"✓ Iteration {iteration}: All paths fully converged!")
+        #if all_converged:
+        #    print(f"✓ Iteration {iteration}: All paths fully converged!")
+        #    break
+        # ✅ Simple, correct, efficient
+        if has_converged(current_paths, next_paths):
+            print(f"✓ Iteration {iteration}: Converged!")
             break
-        
         current_paths = next_paths
         print(f"✓ Iteration {iteration}: Processed and updated shortest paths")
-    
+            
     # Remove temporary columns and return result
     return current_paths.drop("is_converged", "current_cell")
 
@@ -272,8 +294,8 @@ def main(
             count = shortcuts_df_new.count()
             print(f"✓ Generated {count} shortcuts at resolution {current_resolution}")
             
-            # Optional: merge back to main table
-            # shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
+            # Merge back to main table
+            shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
         
         print("\n" + "="*60)
         print("Shortest path computation (Pure Spark version) completed!")
@@ -287,6 +309,6 @@ if __name__ == "__main__":
     main(
         edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",
         graph_file="data/burnaby_driving_edge_graph.csv",
-        resolution_range=range(14, 8, -1),
+        resolution_range=range(15, 8, -1),
         max_iterations=10
     )

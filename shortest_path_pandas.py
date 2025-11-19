@@ -251,8 +251,8 @@ def main(
             count = shortcuts_df_new.count()
             print(f"✓ Generated {count} shortcuts at resolution {current_resolution}")
             
-            # Optional: merge back to main table
-            # shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
+            # Merge back to main table
+            shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
         
         print("\n" + "="*60)
         print("Shortest path computation (Pandas version) completed!")
@@ -266,5 +266,5 @@ if __name__ == "__main__":
     main(
         edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",
         graph_file="data/burnaby_driving_edge_graph.csv",
-        resolution_range=range(14, 8, -1)
+        resolution_range=range(15, 8, -1)
     )
