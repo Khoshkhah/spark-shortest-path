@@ -61,14 +61,17 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
 ```
 shortest-path-spark/
-├── utilities.py                     # Shared utility functions (data loading, H3 operations)
-├── shortest_path_scipy_spark.py     # Scipy-optimized implementation (Hybrid)
-├── shortest_path_pure_spark.py      # Pure Spark SQL implementation
-├── config.py                        # Configuration parameters
+├── src/                             # Source code directory
+│   ├── utilities.py                 # Shared utility functions
+│   ├── shortest_path_scipy_spark.py # Scipy-optimized implementation
+│   ├── shortest_path_pure_spark.py  # Pure Spark SQL implementation
+│   ├── config.py                    # Configuration parameters
+│   └── logging_config.py            # Logging configuration
 ├── requirements.txt                 # Python dependencies
 ├── data/
 │   ├── burnaby_driving_simplified_edges_with_h3.csv    # Edge data
 │   └── burnaby_driving_edge_graph.csv                   # Edge graph
+├── logs/                            # Execution logs
 ├── notebooks/
 │   ├── first_pandas_ver.ipynb       # Original development notebook (Pandas)
 │   └── first_pure_spark_ver.ipynb   # Original development notebook (Pure Spark)
@@ -77,7 +80,7 @@ shortest-path-spark/
 
 ## 🔧 Configuration
 
-Edit `config.py` to customize parameters:
+Edit `src/config.py` to customize parameters:
 
 ```python
 # Spark Configuration
