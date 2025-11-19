@@ -24,15 +24,18 @@ SPARK_EXECUTOR_CORES = int(os.getenv("SPARK_EXECUTOR_CORES", "4"))
 # Application name
 SPARK_APP_NAME = "AllPairsShortestPath"
 
+# Determine Project Root (2 levels up from this config file in src/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Checkpoint directory for Spark lineage management
-CHECKPOINT_DIR = "checkpoints"
+CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 
 # ============================================================================
 # FILE PATHS
 # ============================================================================
 
 # Base data directory
-DATA_DIR = Path("data")
+DATA_DIR = PROJECT_ROOT / "data"
 
 # Edge data file - contains OSM-derived road network data with H3 indices
 EDGES_FILE = DATA_DIR / "burnaby_driving_simplified_edges_with_h3.csv"
@@ -41,7 +44,7 @@ EDGES_FILE = DATA_DIR / "burnaby_driving_simplified_edges_with_h3.csv"
 GRAPH_FILE = DATA_DIR / "burnaby_driving_edge_graph.csv"
 
 # Output directory for results
-OUTPUT_DIR = Path("output")
+OUTPUT_DIR = PROJECT_ROOT / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # ============================================================================

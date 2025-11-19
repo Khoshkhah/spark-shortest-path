@@ -320,9 +320,11 @@ def main(
     log_section(logger, "JOB COMPLETED")
 
 
+import config
+
 if __name__ == "__main__":
     main(
-        edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",
-        graph_file="data/burnaby_driving_edge_graph.csv",
+        edges_file=str(config.EDGES_FILE),
+        graph_file=str(config.GRAPH_FILE),
         resolution_range=range(15, -1, -1)
     )

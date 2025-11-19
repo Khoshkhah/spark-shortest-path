@@ -101,7 +101,7 @@ MAX_ITERATIONS_PER_PARTITION = 10
 ### Option 1: Scipy-Optimized Version (Recommended for Coarse Resolutions)
 
 ```bash
-python shortest_path_scipy_spark.py
+python src/shortest_path_scipy_spark.py
 ```
 
 **Best for:**
@@ -110,7 +110,7 @@ python shortest_path_scipy_spark.py
 - When memory efficiency is critical (uses sparse matrices)
 
 ```python
-from shortest_path_scipy_spark import main
+from src.shortest_path_scipy_spark import main
 
 main(
     edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",
@@ -122,7 +122,7 @@ main(
 ### Option 2: Pure Spark Version (Recommended for Fine Resolutions)
 
 ```bash
-python shortest_path_pure_spark.py
+python src/shortest_path_pure_spark.py
 ```
 
 **Best for:**
@@ -131,7 +131,7 @@ python shortest_path_pure_spark.py
 - Environments with GPU acceleration (RAPIDS)
 
 ```python
-from shortest_path_pure_spark import main
+from src.shortest_path_pure_spark import main
 
 main(
     edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",

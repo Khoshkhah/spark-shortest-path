@@ -35,8 +35,11 @@ from pathlib import Path
 # LOGGING CONFIGURATION
 # ============================================================================
 
+# Determine Project Root (2 levels up from this file in src/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Create logs directory if it doesn't exist
-LOG_DIR = Path("logs")
+LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 # Generate log filename with timestamp
