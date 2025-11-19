@@ -200,7 +200,7 @@ def run_grouped_shortest_path_with_convergence(
             F.row_number().over(window_spec)
         ).filter(
             F.col("rnk") == 1
-        ).drop("rnk").cache()
+        ).drop("rnk").checkpoint().cache()
         
         # Clean up temporary DataFrames
         current_paths.unpersist()
@@ -294,8 +294,9 @@ def main(
             count = shortcuts_df_new.count()
             print(f"✓ Generated {count} shortcuts at resolution {current_resolution}")
             
-            # Merge back to main table
-            shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
+            # Merge back to main table or just save for each resolution
+            #shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
+            shortcuts_df = shortcuts_df_new
         
         print("\n" + "="*60)
         print("Shortest path computation (Pure Spark version) completed!")
