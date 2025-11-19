@@ -173,7 +173,7 @@ def run_grouped_shortest_path_with_convergence(
             F.col("L.outgoing_edge").alias("via_edge"),
             F.col("L.current_cell").alias("current_cell"),
             F.lit(False).alias("is_converged")
-        ).cache()
+        ).cache().checkpoint()
         
         # Check if any new paths were found
         if new_paths.limit(1).count() == 0:
@@ -222,7 +222,7 @@ def run_grouped_shortest_path_with_convergence(
         if has_converged(current_paths, next_paths):
             print(f"✓ Iteration {iteration}: Converged!")
             break
-        current_paths = next_paths.checkpoint()
+        current_paths = next_paths
         print(f"✓ Iteration {iteration}: Processed and updated shortest paths")
             
     # Remove temporary columns and return result
@@ -296,6 +296,7 @@ def main(
             
             # Merge back to main table or just save for each resolution
             #shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
+            shortcuts_df.unpersist()
             shortcuts_df = shortcuts_df_new
         
         print("\n" + "="*60)
@@ -310,6 +311,6 @@ if __name__ == "__main__":
     main(
         edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",
         graph_file="data/burnaby_driving_edge_graph.csv",
-        resolution_range=range(15, 8, -1),
+        resolution_range=range(15, 2, -1),
         max_iterations=10
     )
