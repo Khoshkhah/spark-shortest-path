@@ -200,7 +200,7 @@ def run_grouped_shortest_path_with_convergence(
             F.row_number().over(window_spec)
         ).filter(
             F.col("rnk") == 1
-        ).drop("rnk").checkpoint().cache()
+        ).drop("rnk").cache()
         
         # Clean up temporary DataFrames
         current_paths.unpersist()
@@ -222,7 +222,7 @@ def run_grouped_shortest_path_with_convergence(
         if has_converged(current_paths, next_paths):
             print(f"✓ Iteration {iteration}: Converged!")
             break
-        current_paths = next_paths
+        current_paths = next_paths.checkpoint()
         print(f"✓ Iteration {iteration}: Processed and updated shortest paths")
             
     # Remove temporary columns and return result
