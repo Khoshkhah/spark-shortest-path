@@ -4,10 +4,10 @@ utilities.py
 
 Shared utilities for Shortest Path Computation using PySpark and H3 Geospatial Indexing
 
-This module contains common functions used by both pandas and pure Spark implementations.
+This module contains common functions used by both Scipy-optimized and pure Spark implementations.
 Used by:
-- shortest_path_pandas.py
-- shortest_path_spark.py
+- shortest_path_scipy_spark.py
+- shortest_path_pure_spark.py
 
 Author: [Your Name]
 Date: 2025
