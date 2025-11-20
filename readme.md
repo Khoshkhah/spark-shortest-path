@@ -14,7 +14,7 @@ For a detailed explanation of the algorithm, including the bi-directional resolu
 
 ### Key Features
 
-- **Hierarchical Processing**: Processes roads at different spatial granularities (H3 resolutions 8-15)
+- **Hierarchical Processing**: Processes roads at different spatial granularities (H3 resolutions 0-15)
 - **Hybrid Computation**: Combines Spark for distribution with Scipy for fast local execution
 - **Memory Efficient**: Uses sparse matrices to handle dense graph connections
 - **Scalable**: Capable of handling large road networks by partitioning space
