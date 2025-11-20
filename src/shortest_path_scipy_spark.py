@@ -21,6 +21,7 @@ Date: 2025
 import pandas as pd
 import gc
 from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 from logging_config import get_logger, log_section, log_dict
 from utilities import (
@@ -298,6 +299,111 @@ def main(
             except Exception as e:
                 logger.error(f"Error processing resolution {current_resolution}: {str(e)}")
                 raise
+
+        # ============================================================================
+        # STEP 2: GLOBAL OPTIMIZATION (Resolution -1)
+        # ============================================================================
+        
+        log_section(logger, "GLOBAL OPTIMIZATION (Resolution -1)")
+        
+        try:
+            current_resolution = -1
+            
+            logger.info("Enriching shortcuts with spatial information...")
+            shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
+            shortcuts_df = shortcuts_df.checkpoint().cache()
+            
+            # Filter for LCA <= 0 (covers -1 and 0)
+            logger.info(f"Filtering for global shortcuts (LCA <= 0)...")
+            shortcuts_df_filtered = shortcuts_df.filter(F.col("lca_res") <= 0)
+            filtered_count = shortcuts_df_filtered.count()
+            logger.info(f"✓ Filtered to {filtered_count} global shortcuts")
+            
+            # Add spatial partition key (returns "global")
+            logger.info("Adding global partition key...")
+            shortcuts_df_with_cell = add_parent_cell_at_resolution(
+                shortcuts_df_filtered,
+                current_resolution
+            )
+            
+            logger.info("Computing global shortest paths using Scipy...")
+            shortcuts_df_new = compute_shortest_paths_per_partition(
+                shortcuts_df_with_cell,
+                partition_columns=["current_cell"]
+            )
+            
+            count = shortcuts_df_new.count()
+            logger.info(f"✓ Generated {count} global shortcuts")
+            
+            resolution_results.append({
+                "resolution": -1,
+                "count": count
+            })
+            
+            logger.info("Updating main shortcuts table...")
+            shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
+            shortcuts_df = shortcuts_df.localCheckpoint()
+            
+            shortcuts_df_new.unpersist()
+            shortcuts_df_with_cell.unpersist()
+            
+        except Exception as e:
+            logger.error(f"Error processing global resolution: {str(e)}")
+            raise
+
+        # ============================================================================
+        # STEP 3: UPWARD PASS (Resolution 0 -> 15)
+        # ============================================================================
+        
+        log_section(logger, "UPWARD PASS (Resolution 0 -> 15)")
+        
+        # Process from coarse to fine
+        upward_range = range(0, 16)
+        
+        for current_resolution in upward_range:
+            log_section(logger, f"Upward Pass: Resolution {current_resolution}")
+            
+            try:
+                logger.info("Enriching shortcuts with spatial information...")
+                shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
+                shortcuts_df = shortcuts_df.checkpoint().cache()
+                
+                logger.info(f"Filtering by resolution {current_resolution}...")
+                shortcuts_df_filtered = filter_shortcuts_by_resolution(
+                    shortcuts_df,
+                    current_resolution
+                )
+                
+                logger.info("Adding spatial partition keys...")
+                shortcuts_df_with_cell = add_parent_cell_at_resolution(
+                    shortcuts_df_filtered,
+                    current_resolution
+                )
+                
+                logger.info("Computing shortest paths using Scipy...")
+                shortcuts_df_new = compute_shortest_paths_per_partition(
+                    shortcuts_df_with_cell,
+                    partition_columns=["current_cell"]
+                )
+                
+                count = shortcuts_df_new.count()
+                logger.info(f"✓ Generated {count} shortcuts at resolution {current_resolution}")
+                
+                resolution_results.append({
+                    "resolution": current_resolution,
+                    "count": count
+                })
+                
+                logger.info("Updating main shortcuts table...")
+                shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
+                shortcuts_df = shortcuts_df.localCheckpoint()
+                
+                shortcuts_df_new.unpersist()
+                shortcuts_df_with_cell.unpersist()
+                
+            except Exception as e:
+                logger.error(f"Error processing upward resolution {current_resolution}: {str(e)}")
+                raise
         
         # Log summary
         log_section(logger, "SUMMARY")
@@ -306,6 +412,17 @@ def main(
             logger.info(f"  Resolution {result['resolution']}: {result['count']} shortcuts")
         
         logger.info("✓ Shortest path computation completed successfully!")
+        
+        # Save final shortcuts table to output
+        log_section(logger, "SAVING OUTPUT")
+        final_count = shortcuts_df.count()
+        logger.info(f"Final shortcuts table contains {final_count} rows")
+        
+        output_path = str(config.SHORTCUTS_OUTPUT_FILE)
+        logger.info(f"Saving shortcuts table to: {output_path}")
+        
+        shortcuts_df.write.mode("overwrite").parquet(output_path)
+        logger.info(f"✓ Shortcuts table saved successfully!")
         
     except Exception as e:
         logger.error(f"Fatal error: {str(e)}")

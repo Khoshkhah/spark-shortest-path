@@ -47,6 +47,9 @@ GRAPH_FILE = DATA_DIR / "burnaby_driving_edge_graph.csv"
 OUTPUT_DIR = PROJECT_ROOT / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
+# Final shortcuts table output file
+SHORTCUTS_OUTPUT_FILE = OUTPUT_DIR / "shortcuts_final"
+
 # ============================================================================
 # COMPUTATION PARAMETERS
 # ============================================================================
@@ -63,6 +66,16 @@ RESOLUTION_RANGE = range(MAX_H3_RESOLUTION, MIN_H3_RESOLUTION - 1, -1)
 # Maximum iterations per spatial partition
 # Floyd-Warshall typically converges in O(V) iterations where V = num nodes
 MAX_ITERATIONS_PER_PARTITION = 10
+
+# ============================================================================
+# HYBRID ALGORITHM SELECTION
+# ============================================================================
+
+# Resolutions to use Scipy algorithm (best for coarse resolutions with dense graphs)
+SCIPY_RESOLUTIONS = list(range(0, 11))  # Resolutions 0-10
+
+# Resolutions to use Pure Spark algorithm (best for fine resolutions with many partitions)
+PURE_SPARK_RESOLUTIONS = list(range(11, 16))  # Resolutions 11-15
 
 # ============================================================================
 # COST CALCULATION

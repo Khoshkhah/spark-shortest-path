@@ -4,8 +4,9 @@ A distributed computing solution for computing all-pairs shortest paths on large
 
 ## 🎯 Overview
 
-This project implements a scalable shortest path algorithm that leverages:
+This project implements a scalable, all-pairs shortest path algorithm for large geospatial graphs using **PySpark** and **H3 Geospatial Indexing**. It employs a hybrid approach, dynamically switching between **Scipy** (for dense, in-memory computation) and **Pure Spark SQL** (for distributed, sparse computation) to optimize performance.
 
+For a detailed explanation of the algorithm, including the bi-directional resolution pass, see [ALGORITHM.md](ALGORITHM.md).
 - **PySpark**: Distributed computation across multiple nodes
 - **H3 Geospatial Indexing**: Hierarchical spatial partitioning for efficient processing
 - **Scipy (Sparse Graphs)**: Efficient in-memory shortest path computation (Dijkstra/Johnson)
@@ -65,6 +66,7 @@ shortest-path-spark/
 │   ├── utilities.py                 # Shared utility functions
 │   ├── shortest_path_scipy_spark.py # Scipy-optimized implementation
 │   ├── shortest_path_pure_spark.py  # Pure Spark SQL implementation
+│   ├── shortest_path_hybrid.py      # Hybrid implementation (Recommended)
 │   ├── config.py                    # Configuration parameters
 │   └── logging_config.py            # Logging configuration
 ├── requirements.txt                 # Python dependencies
@@ -72,7 +74,10 @@ shortest-path-spark/
 │   ├── burnaby_driving_simplified_edges_with_h3.csv    # Edge data
 │   └── burnaby_driving_edge_graph.csv                   # Edge graph
 ├── logs/                            # Execution logs
+├── output/                          # Output directory
+│   └── shortcuts_final/             # Final shortcuts table (Parquet)
 ├── notebooks/
+│   ├── analyze_shortcuts.ipynb      # Analysis notebook for shortcuts output
 │   ├── first_pandas_ver.ipynb       # Original development notebook (Pandas)
 │   └── first_pure_spark_ver.ipynb   # Original development notebook (Pure Spark)
 └── README.md                        # This file
@@ -91,17 +96,56 @@ SPARK_EXECUTOR_MEMORY = "4g"
 EDGES_FILE = "data/burnaby_driving_simplified_edges_with_h3.csv"
 GRAPH_FILE = "data/burnaby_driving_edge_graph.csv"
 
+# Output
+SHORTCUTS_OUTPUT_FILE = "output/shortcuts_final"
+
 # H3 Resolution Range
 MIN_RESOLUTION = 8
 MAX_RESOLUTION = 14
 
 # Computation
 MAX_ITERATIONS_PER_PARTITION = 10
+
+# Hybrid Algorithm Selection
+SCIPY_RESOLUTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # Coarse resolutions
+PURE_SPARK_RESOLUTIONS = [11, 12, 13, 14, 15]           # Fine resolutions
 ```
 
 ## ▶️ Usage
 
-### Option 1: Scipy-Optimized Version (Recommended for Coarse Resolutions)
+### Option 1: Hybrid Version (Recommended)
+
+```bash
+python src/shortest_path_hybrid.py
+```
+
+**Best for:**
+- **All resolution ranges** (automatically selects optimal algorithm)
+- Default: Scipy for resolutions 0-10, Pure Spark for 11-15
+- Customizable algorithm selection per resolution
+
+```python
+from src.shortest_path_hybrid import main
+
+# Use default strategy
+main(
+    edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",
+    graph_file="data/burnaby_driving_edge_graph.csv",
+    resolution_range=range(15, -1, -1)
+)
+
+# Custom algorithm selection
+main(
+    edges_file="data/burnaby_driving_simplified_edges_with_h3.csv",
+    graph_file="data/burnaby_driving_edge_graph.csv",
+    resolution_range=range(15, 7, -1),
+    scipy_resolutions=[8, 9, 10],
+    pure_spark_resolutions=[11, 12, 13, 14, 15],
+    max_iterations=20
+)
+```
+
+### Option 2: Scipy-Optimized Version (Recommended for Coarse Resolutions)
 
 ```bash
 python src/shortest_path_scipy_spark.py
@@ -122,7 +166,7 @@ main(
 )
 ```
 
-### Option 2: Pure Spark Version (Recommended for Fine Resolutions)
+### Option 3: Pure Spark Version (Recommended for Fine Resolutions)
 
 ```bash
 python src/shortest_path_pure_spark.py
@@ -161,6 +205,47 @@ Both implementations follow a hierarchical approach, but differ in how they comp
     -   *Scipy*: `applyInPandas` -> Build Graph -> Dijkstra -> Return Paths
     -   *Spark*: `join` -> `window` -> `filter` loop until convergence
 6.  **Merge**: Update the main shortcuts table with newly found paths.
+
+## � Output
+
+After processing all resolutions, both implementations save the final shortcuts table to:
+
+```
+output/shortcuts_final/
+```
+
+The output is saved in **Parquet format** for efficient storage and fast querying. The shortcuts table contains:
+
+- `incoming_edge`: Source edge ID
+- `outgoing_edge`: Destination edge ID  
+- `via_edge`: Intermediate edge used in the shortest path
+- `cost`: Total cost (travel time) of the path
+
+### Reading the Output
+
+```python
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("ReadShortcuts").getOrCreate()
+shortcuts = spark.read.parquet("output/shortcuts_final")
+shortcuts.show()
+```
+
+### Analysis
+
+Use the provided Jupyter notebook to analyze the shortcuts data:
+
+```bash
+jupyter notebook notebooks/analyze_shortcuts.ipynb
+```
+
+The notebook includes:
+- Basic statistics (min, max, avg, median, percentiles)
+- Cost distribution visualizations
+- Edge connectivity analysis
+- Via edge usage (critical junctions)
+- Direct vs multi-hop path comparison
+- Summary export to CSV
 
 ## 📊 Performance Guide
 

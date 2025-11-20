@@ -302,6 +302,9 @@ def add_parent_cell_at_resolution(shortcuts_df: DataFrame, current_resolution: i
         if cell is None:
             return None
         try:
+            if target_resolution == -1:
+                return "global"
+            
             cell_res = h3.get_resolution(cell)
             if target_resolution >= cell_res:
                 return cell

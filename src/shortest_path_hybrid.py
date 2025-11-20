@@ -1,19 +1,18 @@
 """
-Shortest Path Computation using Pure PySpark (With Logging)
+Hybrid Shortest Path Computation using PySpark (Scipy + Pure Spark)
 
-This module implements shortest path computation using only Spark SQL operations
-with comprehensive logging to both terminal and file.
+This module implements a hybrid approach that allows selecting the optimal
+algorithm (Scipy or Pure Spark) for different H3 resolution ranges.
 
-Advantages:
-- Works well for extremely large partitions (> 100k rows) where Scipy might OOM
-- Better GPU acceleration support (via RAPIDS/Spark SQL)
-- All operations logged to file for debugging
+Strategy:
+- Use Pure Spark for fine resolutions (10-16): Many small partitions
+- Use Scipy for coarse resolutions (0-10): Fewer but larger, denser partitions
 
 Author: [Your Name]
 Date: 2025
 """
 
-from pyspark.sql import SparkSession, DataFrame, Window
+from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 from logging_config import get_logger, log_section, log_dict
 from utilities import (
@@ -27,170 +26,61 @@ from utilities import (
     merge_shortcuts_to_main_table
 )
 
+# Import computation functions from both implementations
+from shortest_path_scipy_spark import compute_shortest_paths_per_partition
+from shortest_path_pure_spark import run_grouped_shortest_path_with_convergence
+
 # Initialize logger
 logger = get_logger(__name__)
 
 
 # ============================================================================
-# PURE SPARK SHORTEST PATH COMPUTATION
-# ============================================================================
-
-def has_converged(current_paths: DataFrame, next_paths: DataFrame) -> bool:
-    """
-    Check if the shortest path computation has converged.
-    
-    Convergence occurs when no new paths or path improvements are found.
-    
-    Args:
-        current_paths: Paths from previous iteration
-        next_paths: Paths computed in current iteration
-    
-    Returns:
-        True if converged (no changes), False if changes exist
-    """
-    join_keys = ["incoming_edge", "outgoing_edge", "cost", "current_cell"]
-    
-    # Find rows in next_paths that don't exist in current_paths
-    changes = next_paths.join(
-        current_paths.select(join_keys),
-        on=join_keys,
-        how="left_anti"
-    )
-    
-    # True if no changes found (converged)
-    return changes.limit(1).count() == 0
-
-
-def run_grouped_shortest_path_with_convergence(
-    shortcuts_df: DataFrame,
-    max_iterations: int = 10
-) -> DataFrame:
-    """
-    Compute all-pairs shortest paths using pure Spark SQL operations.
-    
-    Uses self-joins and window functions to iteratively extend paths until
-    convergence. All operations logged to file.
-    
-    Args:
-        shortcuts_df: Input shortcuts DataFrame
-        max_iterations: Maximum iterations before stopping
-    
-    Returns:
-        DataFrame with computed shortest paths
-    """
-    
-    logger.info(f"Starting shortest path computation with max_iterations={max_iterations}")
-    
-    # Initialize
-    current_paths = shortcuts_df.select(
-        "incoming_edge", "outgoing_edge", "cost", "via_edge", "current_cell"
-    ).cache()
-    
-    initial_count = current_paths.count()
-    logger.info(f"Initial paths count: {initial_count}")
-    
-    for iteration in range(max_iterations):
-        logger.info(f"\n--- Iteration {iteration} ---")
-        
-        try:
-            # --- PATH EXTENSION ---
-            new_paths = current_paths.alias("L").join(
-                current_paths.alias("R"),
-                [
-                    F.col("L.outgoing_edge") == F.col("R.incoming_edge"),
-                    F.col("L.current_cell") == F.col("R.current_cell")
-                ],
-                "inner"
-            ).filter(
-                (F.col("L.incoming_edge") != F.col("R.outgoing_edge"))
-            ).select(
-                F.col("L.incoming_edge").alias("incoming_edge"),
-                F.col("R.outgoing_edge").alias("outgoing_edge"),
-                (F.col("L.cost") + F.col("R.cost")).alias("cost"),
-                F.col("L.outgoing_edge").alias("via_edge"),
-                F.col("L.current_cell").alias("current_cell")
-            ).cache()
-            
-            new_count = new_paths.count()
-            logger.info(f"Found {new_count} new paths")
-            
-            # Check if any new paths were found
-            if new_count == 0:
-                logger.info("✓ No new paths found. Converged.")
-                break
-            
-            # --- COST MINIMIZATION ---
-            all_paths = current_paths.unionByName(new_paths)
-            
-            window_spec = Window.partitionBy(
-                "incoming_edge",
-                "outgoing_edge",
-                "current_cell"
-            ).orderBy(
-                F.col("cost").asc(),
-                F.col("via_edge").asc()
-            )
-            
-            next_paths = all_paths.withColumn(
-                "rnk",
-                F.row_number().over(window_spec)
-            ).filter(
-                F.col("rnk") == 1
-            ).drop("rnk").localCheckpoint()
-            
-            next_count = next_paths.count()
-            logger.info(f"After cost minimization: {next_count} paths")
-            
-            # Clean up
-            current_paths.unpersist()
-            new_paths.unpersist()
-            
-            # --- CONVERGENCE CHECK ---
-            if has_converged(current_paths, next_paths):
-                logger.info(f"✓ Iteration {iteration}: Converged - no improvements found!")
-                break
-            
-            current_paths = next_paths
-            logger.info(f"✓ Iteration {iteration}: Completed successfully")
-            
-        except Exception as e:
-            logger.error(f"Error in iteration {iteration}: {str(e)}")
-            raise
-    
-    logger.info(f"\nShortest path computation completed after {iteration + 1} iterations")
-    
-    # Remove temporary columns and return result
-    return current_paths.drop("current_cell")
-
-
-# ============================================================================
-# MAIN EXECUTION FOR PURE SPARK VERSION
+# HYBRID MAIN EXECUTION
 # ============================================================================
 
 def main(
     edges_file: str,
     graph_file: str,
-    resolution_range: range = range(14, 8, -1),
+    resolution_range: range = range(15, -1, -1),
+    scipy_resolutions: list = None,
+    pure_spark_resolutions: list = None,
     max_iterations: int = 10
 ):
     """
-    Main execution function for pure Spark shortest path computation.
+    Main execution function for hybrid shortest path computation.
+    
+    Allows selecting which algorithm to use for each resolution level.
     
     Args:
         edges_file: Path to edges CSV file
         graph_file: Path to edge graph CSV file
         resolution_range: Range of H3 resolutions to process
-        max_iterations: Maximum iterations per partition
+        scipy_resolutions: List of resolutions to use Scipy algorithm (default: 0-10)
+        pure_spark_resolutions: List of resolutions to use Pure Spark (default: 11-15)
+        max_iterations: Maximum iterations for Pure Spark algorithm
     """
     
-    log_section(logger, "SHORTEST PATH COMPUTATION - PURE SPARK VERSION")
+    log_section(logger, "SHORTEST PATH COMPUTATION - HYBRID VERSION")
+    
+    # Default algorithm selection if not specified
+    if scipy_resolutions is None and pure_spark_resolutions is None:
+        # Default strategy: Scipy for coarse (0-10), Pure Spark for fine (11-15)
+        scipy_resolutions = list(range(0, 11))
+        pure_spark_resolutions = list(range(11, 16))
+    elif scipy_resolutions is None:
+        scipy_resolutions = []
+    elif pure_spark_resolutions is None:
+        pure_spark_resolutions = []
     
     # Log configuration
     config = {
         "edges_file": edges_file,
         "graph_file": graph_file,
         "resolution_range": f"{resolution_range.start} to {resolution_range.stop}",
-        "max_iterations": max_iterations
+        "scipy_resolutions": scipy_resolutions,
+        "pure_spark_resolutions": pure_spark_resolutions,
+        "max_iterations": max_iterations,
+        "approach": "Hybrid (Scipy + Pure Spark)"
     }
     log_dict(logger, config, "Configuration")
     
@@ -199,11 +89,11 @@ def main(
     try:
         # Initialize Spark
         logger.info("Initializing Spark session...")
-        spark = initialize_spark(app_name="ShortestPathSpark")
+        spark = initialize_spark(app_name="ShortestPathHybrid")
         logger.info("✓ Spark session initialized successfully")
         
         # Load and prepare data
-        logger.info("\nLoading edge data...")
+        logger.info("Loading edge data...")
         edges_df = read_edges(spark, edges_file).cache()
         edges_count = edges_df.count()
         logger.info(f"✓ Loaded {edges_count} edges")
@@ -216,25 +106,29 @@ def main(
         shortcuts_df = initial_shortcuts_table(spark, graph_file, edges_cost_df)
         shortcuts_count = shortcuts_df.count()
         logger.info(f"✓ Created shortcuts table with {shortcuts_count} entries")
-
+        
         # Process each resolution level
         resolution_results = []
         
         for current_resolution in resolution_range:
-            log_section(logger, f"Processing resolution {current_resolution}")
+            # Determine which algorithm to use
+            if current_resolution in scipy_resolutions:
+                algorithm = "Scipy"
+            elif current_resolution in pure_spark_resolutions:
+                algorithm = "Pure Spark"
+            else:
+                logger.warning(f"Resolution {current_resolution} not assigned to any algorithm, skipping")
+                continue
+            
+            log_section(logger, f"Processing resolution {current_resolution} using {algorithm}")
             
             try:
-                # Enrich with spatial info (User requested this inside loop)
+                # Enrich with spatial info
                 logger.info("Enriching shortcuts with spatial information...")
-                # We keep a reference to unpersist the old one if needed, but since we are overwriting
-                # the variable 'shortcuts_df' which is used in the next iteration, we must be careful.
-                # If the user intends to accumulate info, we let it be.
-                # However, to save memory, we should use localCheckpoint here too.
-                
                 shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
-                shortcuts_df = shortcuts_df.localCheckpoint()
+                shortcuts_df = shortcuts_df.checkpoint().cache()
                 logger.info("✓ Spatial information added and checkpointed")
-
+                
                 # Filter by resolution
                 logger.info(f"Filtering by resolution {current_resolution}...")
                 shortcuts_df_filtered = filter_shortcuts_by_resolution(
@@ -249,30 +143,38 @@ def main(
                 shortcuts_df_with_cell = add_parent_cell_at_resolution(
                     shortcuts_df_filtered,
                     current_resolution
-                ).cache() # Cache this as it's the input to the iterative process
-                logger.info("✓ Spatial partition keys added")
-                
-                # Compute shortest paths
-                logger.info("Computing shortest paths using pure Spark SQL...")
-                shortcuts_df_new = run_grouped_shortest_path_with_convergence(
-                    shortcuts_df_with_cell,
-                    max_iterations=max_iterations
                 )
                 
+                # Compute shortest paths using selected algorithm
+                if algorithm == "Scipy":
+                    logger.info("Computing shortest paths using Scipy (partition-wise)...")
+                    shortcuts_df_new = compute_shortest_paths_per_partition(
+                        shortcuts_df_with_cell,
+                        partition_columns=["current_cell"]
+                    )
+                else:  # Pure Spark
+                    logger.info("Computing shortest paths using Pure Spark SQL...")
+                    shortcuts_df_with_cell = shortcuts_df_with_cell.cache()
+                    shortcuts_df_new = run_grouped_shortest_path_with_convergence(
+                        shortcuts_df_with_cell,
+                        max_iterations=max_iterations
+                    )
+                
                 count = shortcuts_df_new.count()
-                logger.info(f"✓ Generated {count} shortcuts at resolution {current_resolution}")
+                logger.info(f"✓ Generated {count} shortcuts at resolution {current_resolution} using {algorithm}")
                 
                 resolution_results.append({
                     "resolution": current_resolution,
+                    "algorithm": algorithm,
                     "count": count
                 })
-
-                # Update main shortcuts table with new paths
+                
+                # Merge back to main table
                 logger.info("Updating main shortcuts table...")
                 shortcuts_df = merge_shortcuts_to_main_table(shortcuts_df, shortcuts_df_new)
                 shortcuts_df = shortcuts_df.localCheckpoint()
                 logger.info("✓ Main shortcuts table updated and checkpointed")
-
+                
                 # FORCE CLEANUP
                 shortcuts_df_new.unpersist()
                 shortcuts_df_with_cell.unpersist()
@@ -289,10 +191,11 @@ def main(
         
         try:
             current_resolution = -1
+            algorithm = "Scipy" # Always use Scipy for global step (single partition)
             
             logger.info("Enriching shortcuts with spatial information...")
             shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
-            shortcuts_df = shortcuts_df.localCheckpoint()
+            shortcuts_df = shortcuts_df.checkpoint().cache()
             
             # Filter for LCA <= 0 (covers -1 and 0)
             logger.info(f"Filtering for global shortcuts (LCA <= 0)...")
@@ -305,12 +208,12 @@ def main(
             shortcuts_df_with_cell = add_parent_cell_at_resolution(
                 shortcuts_df_filtered,
                 current_resolution
-            ).cache()
+            )
             
-            logger.info("Computing global shortest paths using Pure Spark SQL...")
-            shortcuts_df_new = run_grouped_shortest_path_with_convergence(
+            logger.info("Computing global shortest paths using Scipy...")
+            shortcuts_df_new = compute_shortest_paths_per_partition(
                 shortcuts_df_with_cell,
-                max_iterations=max_iterations
+                partition_columns=["current_cell"]
             )
             
             count = shortcuts_df_new.count()
@@ -318,6 +221,7 @@ def main(
             
             resolution_results.append({
                 "resolution": -1,
+                "algorithm": "Global (Scipy)",
                 "count": count
             })
             
@@ -342,12 +246,21 @@ def main(
         upward_range = range(0, 16)
         
         for current_resolution in upward_range:
-            log_section(logger, f"Upward Pass: Resolution {current_resolution}")
+            # Determine algorithm (same logic as downward pass)
+            if current_resolution in scipy_resolutions:
+                algorithm = "Scipy"
+            elif current_resolution in pure_spark_resolutions:
+                algorithm = "Pure Spark"
+            else:
+                # Default to Scipy for coarse, Spark for fine if not specified
+                algorithm = "Scipy" if current_resolution <= 10 else "Pure Spark"
+            
+            log_section(logger, f"Upward Pass: Resolution {current_resolution} using {algorithm}")
             
             try:
                 logger.info("Enriching shortcuts with spatial information...")
                 shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
-                shortcuts_df = shortcuts_df.localCheckpoint()
+                shortcuts_df = shortcuts_df.checkpoint().cache()
                 
                 logger.info(f"Filtering by resolution {current_resolution}...")
                 shortcuts_df_filtered = filter_shortcuts_by_resolution(
@@ -359,19 +272,28 @@ def main(
                 shortcuts_df_with_cell = add_parent_cell_at_resolution(
                     shortcuts_df_filtered,
                     current_resolution
-                ).cache()
-                
-                logger.info("Computing shortest paths using Pure Spark SQL...")
-                shortcuts_df_new = run_grouped_shortest_path_with_convergence(
-                    shortcuts_df_with_cell,
-                    max_iterations=max_iterations
                 )
+                
+                if algorithm == "Scipy":
+                    logger.info("Computing shortest paths using Scipy...")
+                    shortcuts_df_new = compute_shortest_paths_per_partition(
+                        shortcuts_df_with_cell,
+                        partition_columns=["current_cell"]
+                    )
+                else:
+                    logger.info("Computing shortest paths using Pure Spark...")
+                    shortcuts_df_with_cell = shortcuts_df_with_cell.cache()
+                    shortcuts_df_new = run_grouped_shortest_path_with_convergence(
+                        shortcuts_df_with_cell,
+                        max_iterations=max_iterations
+                    )
                 
                 count = shortcuts_df_new.count()
                 logger.info(f"✓ Generated {count} shortcuts at resolution {current_resolution}")
                 
                 resolution_results.append({
                     "resolution": current_resolution,
+                    "algorithm": f"Upward {algorithm}",
                     "count": count
                 })
                 
@@ -390,7 +312,8 @@ def main(
         log_section(logger, "SUMMARY")
         logger.info(f"Processed {len(resolution_results)} resolutions")
         for result in resolution_results:
-            logger.info(f"  Resolution {result['resolution']}: {result['count']} shortcuts")
+            algo_str = f" ({result['algorithm']})" if 'algorithm' in result else ""
+            logger.info(f"  Resolution {result['resolution']}{algo_str}: {result['count']} shortcuts")
         
         logger.info("✓ Shortest path computation completed successfully!")
         
@@ -399,6 +322,7 @@ def main(
         final_count = shortcuts_df.count()
         logger.info(f"Final shortcuts table contains {final_count} rows")
         
+        import config
         output_path = str(config.SHORTCUTS_OUTPUT_FILE)
         logger.info(f"Saving shortcuts table to: {output_path}")
         
@@ -421,9 +345,19 @@ def main(
 import config
 
 if __name__ == "__main__":
+    # Example 1: Use default strategy (Scipy for 0-10, Pure Spark for 11-15)
     main(
         edges_file=str(config.EDGES_FILE),
         graph_file=str(config.GRAPH_FILE),
-        resolution_range=range(15, -1, -1),
-        max_iterations=20
+        resolution_range=range(15, -1, -1)
     )
+    
+    # Example 2: Custom algorithm selection
+    # main(
+    #     edges_file=str(config.EDGES_FILE),
+    #     graph_file=str(config.GRAPH_FILE),
+    #     resolution_range=range(15, 7, -1),
+    #     scipy_resolutions=[8, 9, 10],
+    #     pure_spark_resolutions=[11, 12, 13, 14, 15],
+    #     max_iterations=20
+    # )
