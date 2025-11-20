@@ -42,7 +42,14 @@ def initialize_spark(app_name: str = "AllPairsShortestPath", driver_memory: str 
         .config("spark.driver.memory", driver_memory)
         .getOrCreate()
     )
-    spark.sparkContext.setCheckpointDir("checkpoints")
+    
+    # Import config here to avoid circular imports if config imports utilities
+    import config
+    
+    # Use absolute path from config
+    checkpoint_dir = str(config.CHECKPOINT_DIR)
+    spark.sparkContext.setCheckpointDir(checkpoint_dir)
+    
     return spark
 
 
