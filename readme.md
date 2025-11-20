@@ -28,7 +28,14 @@ For a detailed explanation of the algorithm, including the bi-directional resolu
 - h3
 - pandas
 - scipy
+- scipy
 - numpy
+
+## 🔌 Data Source
+
+This project requires processed road network data. Use the **[osm-to-road-network](../osm-to-road-network)** project to generate the required input files:
+1.  `*_simplified_edges_with_h3.csv`
+2.  `*_edge_graph.csv`
 
 ## 🚀 Installation
 
