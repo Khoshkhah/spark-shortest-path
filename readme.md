@@ -33,7 +33,7 @@ For a detailed explanation of the algorithm, including the bi-directional resolu
 
 ## 🔌 Data Source
 
-This project requires processed road network data. Use the **[osm-to-road-network](../osm-to-road-network)** project to generate the required input files:
+This project requires processed road network data. Use the **[osm-to-road-network](https://github.com/Khoshkhah/osm-to-road-network)** project to generate the required input files:
 1.  `*_simplified_edges_with_h3.csv`
 2.  `*_edge_graph.csv`
 
@@ -42,8 +42,8 @@ This project requires processed road network data. Use the **[osm-to-road-networ
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/shortest-path-spark.git
-cd shortest-path-spark
+git clone https://github.com/khoshkhah/spark-shortest-path.git
+cd spark-shortest-path
 ```
 
 ### 2. Create Virtual Environment
