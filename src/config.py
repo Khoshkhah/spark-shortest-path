@@ -37,18 +37,22 @@ CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 # Base data directory
 DATA_DIR = PROJECT_ROOT / "data"
 
+# District name
+DISTRICT_NAME = "Somerset" #Kentucky   
+#DISTRICT_NAME = "burnaby" #British Columbia   
+
 # Edge data file - contains OSM-derived road network data with H3 indices
-EDGES_FILE = DATA_DIR / "burnaby_driving_simplified_edges_with_h3.csv"
+EDGES_FILE = DATA_DIR / f"{DISTRICT_NAME}_driving_simplified_edges_with_h3.csv"
 
 # Edge graph file - defines which edges are connected
-GRAPH_FILE = DATA_DIR / "burnaby_driving_edge_graph.csv"
+GRAPH_FILE = DATA_DIR / f"{DISTRICT_NAME}_driving_edge_graph.csv"
 
 # Output directory for results
 OUTPUT_DIR = PROJECT_ROOT / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Final shortcuts table output file
-SHORTCUTS_OUTPUT_FILE = OUTPUT_DIR / "shortcuts_final"
+SHORTCUTS_OUTPUT_FILE = OUTPUT_DIR / f"{DISTRICT_NAME}_shortcuts_final"
 
 # ============================================================================
 # COMPUTATION PARAMETERS
