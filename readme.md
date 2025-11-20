@@ -6,7 +6,7 @@ A distributed computing solution for computing all-pairs shortest paths on large
 
 This project implements a scalable, all-pairs shortest path algorithm for large geospatial graphs using **PySpark** and **H3 Geospatial Indexing**. It employs a hybrid approach, dynamically switching between **Scipy** (for dense, in-memory computation) and **Pure Spark SQL** (for distributed, sparse computation) to optimize performance.
 
-For a detailed explanation of the algorithm, including the bi-directional resolution pass, see [ALGORITHM.md](ALGORITHM.md).
+For a detailed explanation of the algorithm, including the bi-directional resolution pass, see [ALGORITHM.md](doc/ALGORITHM.md).
 - **PySpark**: Distributed computation across multiple nodes
 - **H3 Geospatial Indexing**: Hierarchical spatial partitioning for efficient processing
 - **Scipy (Sparse Graphs)**: Efficient in-memory shortest path computation (Dijkstra/Johnson)
