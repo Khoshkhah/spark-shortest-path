@@ -22,7 +22,7 @@ import pandas as pd
 import gc
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType
 from logging_config import get_logger, log_section, log_dict
 from utilities import (
     initialize_spark,
@@ -66,9 +66,9 @@ def compute_shortest_paths_per_partition(
     
     # Define output schema
     output_schema = StructType([
-        StructField("incoming_edge", StringType(), False),
-        StructField("outgoing_edge", StringType(), False),
-        StructField("via_edge", StringType(), False),
+        StructField("incoming_edge", IntegerType(), False),
+        StructField("outgoing_edge", IntegerType(), False),
+        StructField("via_edge", IntegerType(), False),
         StructField("cost", DoubleType(), False),
     ])
     
@@ -418,6 +418,9 @@ def main(
         final_count = shortcuts_df.count()
         logger.info(f"Final shortcuts table contains {final_count} rows")
         
+        logger.info("Adding final info to shortcuts...")
+        shortcuts_df = add_final_info_for_shortcuts(spark, shortcuts_df, edges_df)
+
         output_path = str(config.SHORTCUTS_OUTPUT_FILE)
         logger.info(f"Saving shortcuts table to: {output_path}")
         

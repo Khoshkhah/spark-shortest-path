@@ -4,3 +4,4 @@ scipy
 h3
 numpy
 pyarrow
+graphframes

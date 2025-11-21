@@ -61,15 +61,15 @@ SHORTCUTS_OUTPUT_FILE = OUTPUT_DIR / f"{DISTRICT_NAME}_shortcuts_final"
 # H3 Resolution Range
 # Valid range: 0 (world) to 15 (highest detail, ~10m)
 # Typical road network: 13-15
-MIN_H3_RESOLUTION = 8
-MAX_H3_RESOLUTION = 14
+MIN_H3_RESOLUTION = 0
+MAX_H3_RESOLUTION = 15
 
 # Process from high to low resolution (coarse to fine)
 RESOLUTION_RANGE = range(MAX_H3_RESOLUTION, MIN_H3_RESOLUTION - 1, -1)
 
 # Maximum iterations per spatial partition
 # Floyd-Warshall typically converges in O(V) iterations where V = num nodes
-MAX_ITERATIONS_PER_PARTITION = 10
+MAX_ITERATIONS_PER_PARTITION = 20
 
 # ============================================================================
 # HYBRID ALGORITHM SELECTION

@@ -399,6 +399,9 @@ def main(
         final_count = shortcuts_df.count()
         logger.info(f"Final shortcuts table contains {final_count} rows")
         
+        logger.info("Adding final info to shortcuts...")
+        shortcuts_df = add_final_info_for_shortcuts(spark, shortcuts_df, edges_df)
+        
         output_path = str(config.SHORTCUTS_OUTPUT_FILE)
         logger.info(f"Saving shortcuts table to: {output_path}")
         

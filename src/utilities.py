@@ -17,13 +17,15 @@ import os
 from typing import List
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, LongType, ByteType
 import h3
 
 
 # ============================================================================
 # 1. SPARK SESSION INITIALIZATION
 # ============================================================================
+
+import sys
 
 def initialize_spark(app_name: str = "AllPairsShortestPath", driver_memory: str = "8g") -> SparkSession:
     """
@@ -36,6 +38,10 @@ def initialize_spark(app_name: str = "AllPairsShortestPath", driver_memory: str 
     Returns:
         Configured SparkSession instance
     """
+    # Ensure workers use the same python environment
+    os.environ['PYSPARK_PYTHON'] = sys.executable
+    os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
+
     spark = (
         SparkSession.builder
         .appName(app_name)
@@ -153,8 +159,8 @@ def update_dummy_costs_for_edges(spark: SparkSession, file_path: str, edges_df: 
 # 4. H3 GEOSPATIAL UTILITIES
 # ============================================================================
 
-@F.udf(StringType())
-def find_lca(cell1: str, cell2: str) -> str:
+@F.udf(LongType())
+def find_lca(cell1: int, cell2: int) -> int:
     """
     Find the Lowest Common Ancestor (LCA) cell between two H3 cells.
     
@@ -165,25 +171,27 @@ def find_lca(cell1: str, cell2: str) -> str:
         cell2: Second H3 cell ID
     
     Returns:
-        LCA cell ID, or None if no common ancestor exists
+        LCA cell ID, or 0 if no common ancestor exists
     """
-    if cell1 is None or cell2 is None:
-        return None
+     
+    if cell1==0 or cell2==0:
+        return 0
     
-    cell1_res = h3.get_resolution(cell1)
-    cell2_res = h3.get_resolution(cell2)
+    cell1_res = h3.get_resolution(h3.int_to_str(cell1))
+    cell2_res = h3.get_resolution(h3.int_to_str(cell2))
     lca_res = min(cell1_res, cell2_res)
     
     while lca_res >= 0:
-        if h3.cell_to_parent(cell1, lca_res) == h3.cell_to_parent(cell2, lca_res):
-            return h3.cell_to_parent(cell1, lca_res)
+        if (h3.cell_to_parent(h3.int_to_str(cell1), lca_res) ==
+            h3.cell_to_parent(h3.int_to_str(cell2), lca_res)):
+            return h3.str_to_int(h3.cell_to_parent(h3.int_to_str(cell1), lca_res))
         lca_res -= 1
     
-    return None
+    return 0
 
 
 @F.udf(IntegerType())
-def find_resolution(cell: str) -> int:
+def find_resolution(cell: int) -> int:
     """
     Extract H3 resolution from a cell ID.
     
@@ -193,9 +201,9 @@ def find_resolution(cell: str) -> int:
     Returns:
         Resolution level (0-15), or -1 if cell is None
     """
-    if cell is None:
+    if cell == 0:
         return -1
-    return h3.get_resolution(cell)
+    return h3.get_resolution(h3.int_to_str(cell))
 
 
 def add_info_for_shortcuts(spark: SparkSession, shortcuts_df: DataFrame, edges_df: DataFrame) -> DataFrame:
@@ -203,7 +211,7 @@ def add_info_for_shortcuts(spark: SparkSession, shortcuts_df: DataFrame, edges_d
     Enrich shortcuts DataFrame with spatial information from edges.
     
     Adds:
-    - incoming_cell, outgoing_cell: The cells from respective edges
+    - incoming_cell, outgoing_cell, via_edge, cost: The cells from respective edges
     - lca_res: Lowest common ancestor resolution
     - via_cell: LCA between start and end cells
     - via_res: Resolution of the via_cell
@@ -260,6 +268,115 @@ def add_info_for_shortcuts(spark: SparkSession, shortcuts_df: DataFrame, edges_d
     
     return shortcuts_df
 
+# ============================================================================
+# 4.5. H3 GEOSPATIAL UTILITIES - For final shortcut table result
+# ============================================================================
+
+def _find_ancestor_impl(cell: int, res: int) -> int:
+    """
+    Implementation of find_ancestor logic.
+    """
+    if cell == 0:
+        return 0
+    
+    if res < 0:
+        return 0
+    
+    if res > h3.get_resolution(h3.int_to_str(cell)):
+        # print("Resolution is greater than cell resolution")
+        # logging.warning("Resolution is greater than cell resolution")
+        return cell
+    return h3.str_to_int(h3.cell_to_parent(h3.int_to_str(cell), res))
+
+@F.udf(LongType())
+def find_ancestor(cell: int, res: int) -> int:
+    """
+    Find the Lowest Common Ancestor (LCA) cell between two H3 cells.
+    
+    The LCA is the coarsest resolution cell that contains both input cells.
+    
+    Args:
+        cell1: First H3 cell ID
+        cell2: Second H3 cell ID
+    
+    Returns:
+        LCA cell ID, or None if no common ancestor exists
+    """
+    return _find_ancestor_impl(cell, res)
+
+
+def add_final_info_for_shortcuts(spark: SparkSession, shortcuts_df: DataFrame, edges_df: DataFrame) -> DataFrame:
+    """
+    Enrich shortcuts DataFrame with spatial information from edges.
+    
+    Adds:
+    - cell: The cell of the shortcut (for calculating shortest path, the shortcut only uses in this cell)
+    - inside: +1 = up, 0 = same, -1 = down (for filtering shortcuts in the shortest path calculation)
+    
+    Args:
+        spark: SparkSession instance
+        shortcuts_df: Current shortcuts DataFrame
+        edges_df: Edge information DataFrame
+    
+    Returns:
+        Enriched shortcuts DataFrame
+    """
+    # Clean up existing spatial columns
+    for col in ["lca_res", "via_cell", "via_res"]:
+        if col in shortcuts_df.columns:
+            shortcuts_df = shortcuts_df.drop(col)
+    
+    # Join incoming edge information
+    shortcuts_df = shortcuts_df.join(
+        edges_df.select(
+            F.col("id").alias("incoming_edge_id"),
+            F.col("incoming_cell").alias("incoming_cell_in"),
+            F.col("lca_res").alias("lca_res_in")
+        ),
+        shortcuts_df.incoming_edge == F.col("incoming_edge_id"),
+        "left"
+    ).drop("incoming_edge_id")
+    
+    # Join outgoing edge information
+    shortcuts_df = shortcuts_df.join(
+        edges_df.select(
+            F.col("id").alias("outgoing_edge_id"),
+            F.col("outgoing_cell").alias("outgoing_cell_out"),
+            F.col("lca_res").alias("lca_res_out")
+        ),
+        shortcuts_df.outgoing_edge == F.col("outgoing_edge_id"),
+        "left"
+    ).drop("outgoing_edge_id")
+    
+    # Calculate aggregate lca_res
+    shortcuts_df = shortcuts_df.withColumn(
+        "lca_res",
+        F.greatest(F.col("lca_res_in"), F.col("lca_res_out"))
+    )
+
+    shortcuts_df = shortcuts_df.withColumn(
+        "inside",
+        F.when(F.col("lca_res_in") == F.col("lca_res_out"), 0)
+        .when(F.col("lca_res_in") < F.col("lca_res_out"), -1)
+        .otherwise(1).cast(ByteType())
+    ).drop("lca_res_in", "lca_res_out")
+    
+    
+    # Calculate via_cell and via_res
+    shortcuts_df = shortcuts_df.withColumn(
+        "via_cell",
+        find_lca(F.col("incoming_cell_in"), F.col("outgoing_cell_out"))
+    ).drop("incoming_cell_in", "outgoing_cell_out")
+
+    #Calculate ancestor of via_cell in lca_res resolution
+    shortcuts_df = shortcuts_df.withColumn(
+        "cell",
+        find_ancestor(F.col("via_cell"), F.col("lca_res"))  
+    ).drop("via_cell", "lca_res")
+    
+    return shortcuts_df
+
+
 
 # ============================================================================
 # 5. FILTERING BY RESOLUTION
@@ -303,21 +420,11 @@ def add_parent_cell_at_resolution(shortcuts_df: DataFrame, current_resolution: i
     Returns:
         DataFrame with added current_cell column
     """
-    @F.udf(StringType())
-    def get_parent_cell(cell: str, target_resolution: int) -> str:
+    @F.udf(LongType())
+    def get_parent_cell(cell: int, target_resolution: int) -> int:
         """Get parent cell at target resolution, handling edge cases."""
-        if cell is None:
-            return None
-        try:
-            if target_resolution == -1:
-                return "global"
-            
-            cell_res = h3.get_resolution(cell)
-            if target_resolution >= cell_res:
-                return cell
-            return h3.cell_to_parent(cell, target_resolution)
-        except Exception:
-            return None
+        return _find_ancestor_impl(cell, target_resolution)
+
     
     shortcuts_df = shortcuts_df.withColumn(
         "current_cell",

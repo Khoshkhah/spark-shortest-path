@@ -23,7 +23,8 @@ from utilities import (
     add_info_for_shortcuts,
     filter_shortcuts_by_resolution,
     add_parent_cell_at_resolution,
-    merge_shortcuts_to_main_table
+    merge_shortcuts_to_main_table,
+    add_final_info_for_shortcuts
 )
 
 # Import computation functions from both implementations
@@ -323,6 +324,8 @@ def main(
         logger.info(f"Final shortcuts table contains {final_count} rows")
         
         import config
+        logger.info("Adding final info to shortcuts...")
+        shortcuts_df = add_final_info_for_shortcuts(spark, shortcuts_df, edges_df)
         output_path = str(config.SHORTCUTS_OUTPUT_FILE)
         logger.info(f"Saving shortcuts table to: {output_path}")
         
