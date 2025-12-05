@@ -121,6 +121,9 @@ def compute_shortest_paths_per_partition(
         )
         
         # 4. Convert back to DataFrame
+        # predecessors[i, j] = node before j on path from i to j
+        # via_edge can be any edge on the path except i; we use predecessor of j
+        # If predecessor == i (direct edge), set via_edge = 0
         # Process in chunks to avoid OOM when creating dense arrays from the result
         results = []
         chunk_size = 2000  # Rows per chunk
@@ -155,10 +158,18 @@ def compute_shortest_paths_per_partition(
             chunk_costs = sub_dist[rows, cols]
             chunk_preds = sub_pred[rows, cols]
             
-            # Map indices back to strings
+            # Map indices back to node IDs
             chunk_src = nodes[global_rows]
             chunk_dst = nodes[cols]
-            chunk_via = nodes[chunk_preds]
+            
+            # via_edge: use predecessor of destination
+            # If predecessor == source (direct edge), set via_edge = outgoing_edge
+            # via_edge should never equal incoming_edge
+            chunk_via = np.where(
+                chunk_preds == global_rows,  # direct edge: pred is source
+                nodes[cols],                  # use destination as via
+                nodes[chunk_preds]            # use predecessor as via
+            )
             
             chunk_df = pd.DataFrame({
                 'incoming_edge': chunk_src,
