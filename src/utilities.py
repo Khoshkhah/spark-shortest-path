@@ -14,6 +14,7 @@ Date: 2025
 """
 
 import os
+from pathlib import Path
 from typing import List
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
@@ -38,6 +39,20 @@ def initialize_spark(app_name: str = "AllPairsShortestPath", driver_memory: str 
     Returns:
         Configured SparkSession instance
     """
+    src_dir = Path(__file__).resolve().parent
+
+    # Ensure the src directory is present on both driver and executors' PYTHONPATH
+    if str(src_dir) not in sys.path:
+        sys.path.insert(0, str(src_dir))
+
+    existing_pythonpath = os.environ.get("PYTHONPATH", "")
+    path_parts = [str(src_dir)]
+    if existing_pythonpath:
+        path_parts.append(existing_pythonpath)
+    pythonpath_value = os.pathsep.join(path_parts)
+
+    os.environ['PYTHONPATH'] = pythonpath_value
+
     # Ensure workers use the same python environment
     os.environ['PYSPARK_PYTHON'] = sys.executable
     os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
@@ -46,8 +61,13 @@ def initialize_spark(app_name: str = "AllPairsShortestPath", driver_memory: str 
         SparkSession.builder
         .appName(app_name)
         .config("spark.driver.memory", driver_memory)
+        .config("spark.executorEnv.PYTHONPATH", pythonpath_value)
         .getOrCreate()
     )
+
+    # Distribute project modules to executors so UDFs can import them
+    for module_file in src_dir.glob("*.py"):
+        spark.sparkContext.addPyFile(str(module_file))
     
     # Import config here to avoid circular imports if config imports utilities
     import config

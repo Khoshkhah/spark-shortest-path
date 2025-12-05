@@ -38,8 +38,8 @@ CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 DATA_DIR = PROJECT_ROOT / "data"
 
 # District name
-DISTRICT_NAME = "Somerset" #Kentucky   
-#DISTRICT_NAME = "burnaby" #British Columbia   
+#DISTRICT_NAME = "Somerset" #Kentucky   
+DISTRICT_NAME = "Burnaby" #British Columbia   
 
 # Edge data file - contains OSM-derived road network data with H3 indices
 EDGES_FILE = DATA_DIR / f"{DISTRICT_NAME}_driving_simplified_edges_with_h3.csv"
