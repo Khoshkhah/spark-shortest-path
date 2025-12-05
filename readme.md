@@ -273,6 +273,25 @@ Contributions are welcome! Please:
 4. Push to branch (`git push origin feature/improvement`)
 5. Open a Pull Request
 
+---
+
+## 🔗 Related Projects
+
+This project is part of a three-stage routing pipeline:
+
+| Stage | Project | Description |
+|-------|---------|-------------|
+| 1. Extract | [osm-to-road-network](https://github.com/khoshkhah/osm-to-road-network) | Converts OpenStreetMap data to road network with H3 indexing and turn restrictions |
+| 2. Preprocess | **spark-shortest-path** (this repo) | Builds Contraction Hierarchy shortcuts using PySpark |
+| 3. Query | [dijkstra-on-Hierarchy](https://github.com/khoshkhah/dijkstra-on-Hierarchy) | Production-ready C++ query engine for CH shortest paths |
+
+```
+┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
+│ osm-to-road-network │────▶│ spark-shortest-path │────▶│dijkstra-on-Hierarchy│
+│    (OSM → Graph)    │     │  (Graph → Shortcuts)│     │ (Shortcuts → Query) │
+└─────────────────────┘     └─────────────────────┘     └─────────────────────┘
+```
+
 ## 📄 License
 
 This project is licensed under the MIT License - see LICENSE file for details.
