@@ -1,0 +1,201 @@
+[INFO    ] 2025-12-05 18:38:30 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:30 - __main__ - SHORTEST PATH COMPUTATION - HYBRID VERSION
+[INFO    ] 2025-12-05 18:38:30 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:30 - __main__ - --- Configuration ---
+[INFO    ] 2025-12-05 18:38:30 - __main__ - edges_file             : /home/kaveh/projects/spark-shortest-path/data/Somerset_driving_simplified_edges_with_h3.csv
+[INFO    ] 2025-12-05 18:38:30 - __main__ - graph_file             : /home/kaveh/projects/spark-shortest-path/data/Somerset_driving_edge_graph.csv
+[INFO    ] 2025-12-05 18:38:30 - __main__ - resolution_range       : 15 to -1
+[INFO    ] 2025-12-05 18:38:30 - __main__ - scipy_resolutions      : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+[INFO    ] 2025-12-05 18:38:30 - __main__ - pure_spark_resolutions : [11, 12, 13, 14, 15]
+[INFO    ] 2025-12-05 18:38:30 - __main__ - max_iterations         : 10
+[INFO    ] 2025-12-05 18:38:30 - __main__ - approach               : Hybrid (Scipy + Pure Spark)
+[INFO    ] 2025-12-05 18:38:30 - __main__ - Initializing Spark session...
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+25/12/05 18:38:31 WARN Utils: Your hostname, Bamdad-Beast, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+25/12/05 18:38:31 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+25/12/05 18:38:31 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+[INFO    ] 2025-12-05 18:38:33 - __main__ - ✓ Spark session initialized successfully
+[INFO    ] 2025-12-05 18:38:33 - __main__ - Loading edge data...
+[INFO    ] 2025-12-05 18:38:35 - __main__ - ✓ Loaded 5900 edges
+[INFO    ] 2025-12-05 18:38:35 - __main__ - Computing edge costs...
+[INFO    ] 2025-12-05 18:38:36 - __main__ - ✓ Edge costs computed
+[INFO    ] 2025-12-05 18:38:36 - __main__ - Creating initial shortcuts table...
+[INFO    ] 2025-12-05 18:38:36 - __main__ - ✓ Created shortcuts table with 16301 entries
+[INFO    ] 2025-12-05 18:38:36 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:36 - __main__ - Processing resolution 15 using Pure Spark
+[INFO    ] 2025-12-05 18:38:36 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:36 - __main__ - Enriching shortcuts with spatial information...
+[INFO    ] 2025-12-05 18:38:38 - __main__ - ✓ Spatial information added and checkpointed
+[INFO    ] 2025-12-05 18:38:38 - __main__ - Filtering by resolution 15...
+[INFO    ] 2025-12-05 18:38:38 - __main__ - ✓ Filtered to 16301 shortcuts
+[INFO    ] 2025-12-05 18:38:38 - __main__ - Adding spatial partition keys...
+[INFO    ] 2025-12-05 18:38:38 - __main__ - Computing shortest paths using Pure Spark SQL...
+[INFO    ] 2025-12-05 18:38:38 - shortest_path_pure_spark - Starting shortest path computation with max_iterations=10
+[INFO    ] 2025-12-05 18:38:38 - shortest_path_pure_spark - Initial paths count: 16301
+[INFO    ] 2025-12-05 18:38:38 - shortest_path_pure_spark - 
+--- Iteration 0 ---
+[INFO    ] 2025-12-05 18:38:39 - shortest_path_pure_spark - Found 0 new paths
+[INFO    ] 2025-12-05 18:38:39 - shortest_path_pure_spark - ✓ No new paths found. Converged.
+[INFO    ] 2025-12-05 18:38:39 - shortest_path_pure_spark - 
+Shortest path computation completed after 1 iterations
+[INFO    ] 2025-12-05 18:38:39 - __main__ - ✓ Generated 16301 shortcuts at resolution 15 using Pure Spark
+[INFO    ] 2025-12-05 18:38:39 - __main__ - Updating main shortcuts table...
+[INFO    ] 2025-12-05 18:38:39 - __main__ - ✓ Main shortcuts table updated and checkpointed
+[INFO    ] 2025-12-05 18:38:39 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:39 - __main__ - Processing resolution 14 using Pure Spark
+[INFO    ] 2025-12-05 18:38:39 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:39 - __main__ - Enriching shortcuts with spatial information...
+[INFO    ] 2025-12-05 18:38:39 - __main__ - ✓ Spatial information added and checkpointed
+[INFO    ] 2025-12-05 18:38:39 - __main__ - Filtering by resolution 14...
+[INFO    ] 2025-12-05 18:38:39 - __main__ - ✓ Filtered to 16301 shortcuts
+[INFO    ] 2025-12-05 18:38:39 - __main__ - Adding spatial partition keys...
+[INFO    ] 2025-12-05 18:38:39 - __main__ - Computing shortest paths using Pure Spark SQL...
+[INFO    ] 2025-12-05 18:38:39 - shortest_path_pure_spark - Starting shortest path computation with max_iterations=10
+25/12/05 18:38:39 WARN CacheManager: Asked to cache already cached data.
+[INFO    ] 2025-12-05 18:38:39 - shortest_path_pure_spark - Initial paths count: 16301
+[INFO    ] 2025-12-05 18:38:39 - shortest_path_pure_spark - 
+--- Iteration 0 ---
+[INFO    ] 2025-12-05 18:38:40 - shortest_path_pure_spark - Found 0 new paths
+[INFO    ] 2025-12-05 18:38:40 - shortest_path_pure_spark - ✓ No new paths found. Converged.
+[INFO    ] 2025-12-05 18:38:40 - shortest_path_pure_spark - 
+Shortest path computation completed after 1 iterations
+[INFO    ] 2025-12-05 18:38:40 - __main__ - ✓ Generated 16301 shortcuts at resolution 14 using Pure Spark
+[INFO    ] 2025-12-05 18:38:40 - __main__ - Updating main shortcuts table...
+[INFO    ] 2025-12-05 18:38:40 - __main__ - ✓ Main shortcuts table updated and checkpointed
+[INFO    ] 2025-12-05 18:38:40 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:40 - __main__ - Processing resolution 13 using Pure Spark
+[INFO    ] 2025-12-05 18:38:40 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:40 - __main__ - Enriching shortcuts with spatial information...
+[INFO    ] 2025-12-05 18:38:40 - __main__ - ✓ Spatial information added and checkpointed
+[INFO    ] 2025-12-05 18:38:40 - __main__ - Filtering by resolution 13...
+[INFO    ] 2025-12-05 18:38:40 - __main__ - ✓ Filtered to 16301 shortcuts
+[INFO    ] 2025-12-05 18:38:40 - __main__ - Adding spatial partition keys...
+[INFO    ] 2025-12-05 18:38:40 - __main__ - Computing shortest paths using Pure Spark SQL...
+[INFO    ] 2025-12-05 18:38:40 - shortest_path_pure_spark - Starting shortest path computation with max_iterations=10
+25/12/05 18:38:40 WARN CacheManager: Asked to cache already cached data.
+[INFO    ] 2025-12-05 18:38:40 - shortest_path_pure_spark - Initial paths count: 16301
+[INFO    ] 2025-12-05 18:38:40 - shortest_path_pure_spark - 
+--- Iteration 0 ---
+[INFO    ] 2025-12-05 18:38:41 - shortest_path_pure_spark - Found 74 new paths
+[INFO    ] 2025-12-05 18:38:41 - shortest_path_pure_spark - After cost minimization: 16375 paths
+[INFO    ] 2025-12-05 18:38:41 - shortest_path_pure_spark - ✓ Iteration 0: Completed successfully
+[INFO    ] 2025-12-05 18:38:41 - shortest_path_pure_spark - 
+--- Iteration 1 ---
+[INFO    ] 2025-12-05 18:38:41 - shortest_path_pure_spark - Found 232 new paths
+[INFO    ] 2025-12-05 18:38:42 - shortest_path_pure_spark - After cost minimization: 16375 paths
+[INFO    ] 2025-12-05 18:38:42 - shortest_path_pure_spark - ✓ Iteration 1: Converged - no improvements found!
+[INFO    ] 2025-12-05 18:38:42 - shortest_path_pure_spark - 
+Shortest path computation completed after 2 iterations
+[INFO    ] 2025-12-05 18:38:42 - __main__ - ✓ Generated 16375 shortcuts at resolution 13 using Pure Spark
+[INFO    ] 2025-12-05 18:38:42 - __main__ - Updating main shortcuts table...
+[INFO    ] 2025-12-05 18:38:42 - __main__ - ✓ Main shortcuts table updated and checkpointed
+[INFO    ] 2025-12-05 18:38:42 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:42 - __main__ - Processing resolution 12 using Pure Spark
+[INFO    ] 2025-12-05 18:38:42 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:42 - __main__ - Enriching shortcuts with spatial information...
+[INFO    ] 2025-12-05 18:38:42 - __main__ - ✓ Spatial information added and checkpointed
+[INFO    ] 2025-12-05 18:38:42 - __main__ - Filtering by resolution 12...
+[INFO    ] 2025-12-05 18:38:42 - __main__ - ✓ Filtered to 16279 shortcuts
+[INFO    ] 2025-12-05 18:38:42 - __main__ - Adding spatial partition keys...
+[INFO    ] 2025-12-05 18:38:42 - __main__ - Computing shortest paths using Pure Spark SQL...
+[INFO    ] 2025-12-05 18:38:42 - shortest_path_pure_spark - Starting shortest path computation with max_iterations=10
+25/12/05 18:38:42 WARN CacheManager: Asked to cache already cached data.
+[INFO    ] 2025-12-05 18:38:42 - shortest_path_pure_spark - Initial paths count: 16279
+[INFO    ] 2025-12-05 18:38:42 - shortest_path_pure_spark - 
+--- Iteration 0 ---
+[INFO    ] 2025-12-05 18:38:43 - shortest_path_pure_spark - Found 1200 new paths
+[INFO    ] 2025-12-05 18:38:43 - shortest_path_pure_spark - After cost minimization: 17479 paths
+[INFO    ] 2025-12-05 18:38:43 - shortest_path_pure_spark - ✓ Iteration 0: Completed successfully
+[INFO    ] 2025-12-05 18:38:43 - shortest_path_pure_spark - 
+--- Iteration 1 ---
+[INFO    ] 2025-12-05 18:38:43 - shortest_path_pure_spark - Found 3746 new paths
+[INFO    ] 2025-12-05 18:38:43 - shortest_path_pure_spark - After cost minimization: 17542 paths
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - ✓ Iteration 1: Completed successfully
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - 
+--- Iteration 2 ---
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - Found 4186 new paths
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - After cost minimization: 17542 paths
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - ✓ Iteration 2: Completed successfully
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - 
+--- Iteration 3 ---
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - Found 4186 new paths
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - After cost minimization: 17542 paths
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - ✓ Iteration 3: Converged - no improvements found!
+[INFO    ] 2025-12-05 18:38:44 - shortest_path_pure_spark - 
+Shortest path computation completed after 4 iterations
+[INFO    ] 2025-12-05 18:38:44 - __main__ - ✓ Generated 17542 shortcuts at resolution 12 using Pure Spark
+[INFO    ] 2025-12-05 18:38:44 - __main__ - Updating main shortcuts table...
+[INFO    ] 2025-12-05 18:38:44 - __main__ - ✓ Main shortcuts table updated and checkpointed
+[INFO    ] 2025-12-05 18:38:44 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:44 - __main__ - Processing resolution 11 using Pure Spark
+[INFO    ] 2025-12-05 18:38:44 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:44 - __main__ - Enriching shortcuts with spatial information...
+[INFO    ] 2025-12-05 18:38:45 - __main__ - ✓ Spatial information added and checkpointed
+[INFO    ] 2025-12-05 18:38:45 - __main__ - Filtering by resolution 11...
+[INFO    ] 2025-12-05 18:38:45 - __main__ - ✓ Filtered to 16037 shortcuts
+[INFO    ] 2025-12-05 18:38:45 - __main__ - Adding spatial partition keys...
+[INFO    ] 2025-12-05 18:38:45 - __main__ - Computing shortest paths using Pure Spark SQL...
+[INFO    ] 2025-12-05 18:38:45 - shortest_path_pure_spark - Starting shortest path computation with max_iterations=10
+25/12/05 18:38:45 WARN CacheManager: Asked to cache already cached data.
+[INFO    ] 2025-12-05 18:38:45 - shortest_path_pure_spark - Initial paths count: 16037
+[INFO    ] 2025-12-05 18:38:45 - shortest_path_pure_spark - 
+--- Iteration 0 ---
+[INFO    ] 2025-12-05 18:38:45 - shortest_path_pure_spark - Found 6860 new paths
+[INFO    ] 2025-12-05 18:38:45 - shortest_path_pure_spark - After cost minimization: 22857 paths
+[INFO    ] 2025-12-05 18:38:45 - shortest_path_pure_spark - ✓ Iteration 0: Completed successfully
+[INFO    ] 2025-12-05 18:38:45 - shortest_path_pure_spark - 
+--- Iteration 1 ---
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - Found 27677 new paths
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - After cost minimization: 24787 paths
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - ✓ Iteration 1: Completed successfully
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - 
+--- Iteration 2 ---
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - Found 40412 new paths
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - After cost minimization: 24805 paths
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - ✓ Iteration 2: Completed successfully
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - 
+--- Iteration 3 ---
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - Found 40576 new paths
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - After cost minimization: 24805 paths
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - ✓ Iteration 3: Completed successfully
+[INFO    ] 2025-12-05 18:38:46 - shortest_path_pure_spark - 
+--- Iteration 4 ---
+[INFO    ] 2025-12-05 18:38:47 - shortest_path_pure_spark - Found 40576 new paths
+[INFO    ] 2025-12-05 18:38:47 - shortest_path_pure_spark - After cost minimization: 24805 paths
+[INFO    ] 2025-12-05 18:38:47 - shortest_path_pure_spark - ✓ Iteration 4: Converged - no improvements found!
+[INFO    ] 2025-12-05 18:38:47 - shortest_path_pure_spark - 
+Shortest path computation completed after 5 iterations
+[INFO    ] 2025-12-05 18:38:47 - __main__ - ✓ Generated 24805 shortcuts at resolution 11 using Pure Spark
+[INFO    ] 2025-12-05 18:38:47 - __main__ - Updating main shortcuts table...
+[INFO    ] 2025-12-05 18:38:47 - __main__ - ✓ Main shortcuts table updated and checkpointed
+[INFO    ] 2025-12-05 18:38:47 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:47 - __main__ - Processing resolution 10 using Scipy
+[INFO    ] 2025-12-05 18:38:47 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:38:47 - __main__ - Enriching shortcuts with spatial information...
+[INFO    ] 2025-12-05 18:38:47 - __main__ - ✓ Spatial information added and checkpointed
+[INFO    ] 2025-12-05 18:38:47 - __main__ - Filtering by resolution 10...
+[INFO    ] 2025-12-05 18:38:47 - __main__ - ✓ Filtered to 14928 shortcuts
+[INFO    ] 2025-12-05 18:38:47 - __main__ - Adding spatial partition keys...
+[INFO    ] 2025-12-05 18:38:47 - __main__ - Computing shortest paths using Scipy (partition-wise)...
+[INFO    ] 2025-12-05 18:38:47 - shortest_path_scipy_spark - Starting shortest path computation per partition (Scipy-optimized)
+[INFO    ] 2025-12-05 18:38:47 - shortest_path_scipy_spark - Applying Scipy computation to partitions grouped by: ['current_cell']
+[INFO    ] 2025-12-05 18:38:47 - shortest_path_scipy_spark - ✓ Scipy computation completed for all partitions
+[Stage 290:>                                                        (0 + 1) / 1]                                                                                [INFO    ] 2025-12-05 18:38:53 - __main__ - ✓ Generated 36279 shortcuts at resolution 10 using Scipy
+[INFO    ] 2025-12-05 18:38:53 - __main__ - Updating main shortcuts table...
+[Stage 297:>                                                        (0 + 1) / 1]                                                                                [Stage 299:=================================================>       (7 + 1) / 8]                                                                                [INFO    ] 2025-12-05 18:39:02 - __main__ - ✓ Main shortcuts table updated and checkpointed
+[INFO    ] 2025-12-05 18:39:02 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:39:02 - __main__ - Processing resolution 9 using Scipy
+[INFO    ] 2025-12-05 18:39:02 - __main__ - ============================================================
+[INFO    ] 2025-12-05 18:39:02 - __main__ - Enriching shortcuts with spatial information...
+[INFO    ] 2025-12-05 18:39:03 - __main__ - ✓ Spatial information added and checkpointed
+[INFO    ] 2025-12-05 18:39:03 - __main__ - Filtering by resolution 9...
+[INFO    ] 2025-12-05 18:39:03 - __main__ - ✓ Filtered to 12429 shortcuts
+[INFO    ] 2025-12-05 18:39:03 - __main__ - Adding spatial partition keys...
+[INFO    ] 2025-12-05 18:39:03 - __main__ - Computing shortest paths using Scipy (partition-wise)...
+[INFO    ] 2025-12-05 18:39:03 - shortest_path_scipy_spark - Starting shortest path computation per partition (Scipy-optimized)
+[INFO    ] 2025-12-05 18:39:03 - shortest_path_scipy_spark - Applying Scipy computation to partitions grouped by: ['current_cell']
+[INFO    ] 2025-12-05 18:39:03 - shortest_path_scipy_spark - ✓ Scipy computation completed for all partitions

@@ -22,6 +22,7 @@ from utilities import (
     initial_shortcuts_table,
     update_dummy_costs_for_edges,
     add_info_for_shortcuts,
+    add_final_info_for_shortcuts,
     filter_shortcuts_by_resolution,
     add_parent_cell_at_resolution,
     merge_shortcuts_to_main_table
@@ -186,13 +187,13 @@ def main(
     log_section(logger, "SHORTEST PATH COMPUTATION - PURE SPARK VERSION")
     
     # Log configuration
-    config = {
+    config_dict = {
         "edges_file": edges_file,
         "graph_file": graph_file,
         "resolution_range": f"{resolution_range.start} to {resolution_range.stop}",
         "max_iterations": max_iterations
     }
-    log_dict(logger, config, "Configuration")
+    log_dict(logger, config_dict, "Configuration")
     
     spark = None
     
