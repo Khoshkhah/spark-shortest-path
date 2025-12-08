@@ -127,6 +127,8 @@ def main(
                 # Enrich with spatial info
                 logger.info("Enriching shortcuts with spatial information...")
                 shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
+                logger.info("checkpoint and caching ...")
+
                 shortcuts_df = shortcuts_df.checkpoint().cache()
                 logger.info("✓ Spatial information added and checkpointed")
                 
@@ -196,6 +198,8 @@ def main(
             
             logger.info("Enriching shortcuts with spatial information...")
             shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
+            logger.info("checkpoint and caching ...")
+
             shortcuts_df = shortcuts_df.checkpoint().cache()
             
             # Filter for LCA <= 0 (covers -1 and 0)
@@ -261,6 +265,7 @@ def main(
             try:
                 logger.info("Enriching shortcuts with spatial information...")
                 shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
+                logger.info("checkpoint and caching ...")
                 shortcuts_df = shortcuts_df.checkpoint().cache()
                 
                 logger.info(f"Filtering by resolution {current_resolution}...")

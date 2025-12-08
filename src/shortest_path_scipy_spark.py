@@ -107,8 +107,12 @@ def compute_shortest_paths_per_partition(
         dst_indices = pdf_dedup['outgoing_edge'].map(node_to_idx).values
         costs = pdf_dedup['cost'].values
         
-        # Create CSR matrix
-        # Note: duplicate entries are summed by csr_matrix, but we deduped above.
+        # Create a matrix of original via_edges to preserve them for direct paths
+        # We add 1 to vias to distinguish via=0 (valid) from empty (0 in sparse)
+        via_values = pdf_dedup['via_edge'].values + 1
+        via_matrix = csr_matrix((via_values, (src_indices, dst_indices)), shape=(n_nodes, n_nodes))
+        
+        # Create CSR matrix for costs (the actual graph for Dijkstra)
         graph = csr_matrix((costs, (src_indices, dst_indices)), shape=(n_nodes, n_nodes))
         
         # 3. Compute shortest paths
@@ -123,8 +127,8 @@ def compute_shortest_paths_per_partition(
         # 4. Convert back to DataFrame
         # predecessors[i, j] = node before j on path from i to j
         # via_edge can be any edge on the path except i; we use predecessor of j
-        # If predecessor == i (direct edge), set via_edge = 0
-        # Process in chunks to avoid OOM when creating dense arrays from the result
+        # If predecessor == i (direct edge), we MUST use the original via_edge from input
+        
         results = []
         chunk_size = 2000  # Rows per chunk
         
@@ -162,19 +166,31 @@ def compute_shortest_paths_per_partition(
             chunk_src = nodes[global_rows]
             chunk_dst = nodes[cols]
             
-            # via_edge: use predecessor of destination
-            # If predecessor == source (direct edge), set via_edge = outgoing_edge
-            # via_edge should never equal incoming_edge
-            chunk_via = np.where(
-                chunk_preds == global_rows,  # direct edge: pred is source
-                nodes[cols],                  # use destination as via
-                nodes[chunk_preds]            # use predecessor as via
+            # Determine via_edge
+            # Get original via for potential direct edges (retrieve from matrix + slice)
+            # We need to slice the via_matrix row-wise (expensive if not batched)
+            # Or better: simply index into via_matrix using global indices
+            # via_matrix is (n_nodes, n_nodes). 
+            # We can array index it: via_matrix[global_rows, cols] returns a matrix (1D matrix in recent scipy?)
+            # Actually via_matrix[global_rows, cols] returns matrix of shape (1, K).
+            original_vias_1d = np.array(via_matrix[global_rows, cols]).flatten() - 1
+            
+            # Logic:
+            # If pred == source (direct): use original_vias_1d
+            # Else: use pred as via
+            
+            is_direct = (chunk_preds == global_rows)
+            
+            final_vias = np.where(
+                is_direct,
+                original_vias_1d,
+                nodes[chunk_preds]
             )
             
             chunk_df = pd.DataFrame({
                 'incoming_edge': chunk_src,
                 'outgoing_edge': chunk_dst,
-                'via_edge': chunk_via,
+                'via_edge': final_vias,
                 'cost': chunk_costs
             })
             
@@ -322,6 +338,7 @@ def main(
             
             logger.info("Enriching shortcuts with spatial information...")
             shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
+            logger.info("checkpoint and caching ...")
             shortcuts_df = shortcuts_df.checkpoint().cache()
             
             # Filter for LCA <= 0 (covers -1 and 0)
@@ -377,6 +394,8 @@ def main(
             try:
                 logger.info("Enriching shortcuts with spatial information...")
                 shortcuts_df = add_info_for_shortcuts(spark, shortcuts_df, edges_df)
+                logger.info("checkpoint and caching ...")
+
                 shortcuts_df = shortcuts_df.checkpoint().cache()
                 
                 logger.info(f"Filtering by resolution {current_resolution}...")
